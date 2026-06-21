@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema POS - Pollos a la Canasta</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 0;
+            background-color: #fceddb; color: #333;
+        }
+
+        header {
+            background-color: #d32f2f; color: white;
+            padding: 15px; text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        header h1 { margin: 0; font-size: 2em; }
+        header .credito { margin: 5px 0 0 0; font-size: 1.1em; font-weight: bold; color: #ffeb3b; letter-spacing: 0.5px;}
+
+        .container {
+            max-width: 750px; margin: 20px auto; padding: 10px;
+        }
+
+        .seccion {
+            background: white; padding: 25px;
+            border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .oculto { display: none !important; }
+
+        h2 { color: #d32f2f; margin-top: 0; border-bottom: 2px solid #fceddb; padding-bottom: 8px;}
+
+        .btn-opcion {
+            display: block; width: 100%; background-color: #f57c00; color: white;
+            border: none; padding: 18px; margin: 15px 0; font-size: 1.2em;
+            font-weight: bold; border-radius: 8px; cursor: pointer;
+        }
+
+        /* Tarjetas de Menú */
+        .menu-item {
+            border: 1px solid #ddd; border-radius: 8px; padding: 15px;
+            margin-bottom: 15px; background-color: #fffaf5;
+        }
+
+        .menu-item h3 { margin: 0 0 5px 0; color: #d32f2f; }
+        .precio { font-weight: bold; color: #f57c00; margin-bottom: 10px; }
+
+        .fila-control {
+            display: flex; justify-content: space-between; align-items: center; margin-top: 8px;
+        }
+
+        .contador { display: flex; align-items: center; gap: 8px; }
+        .btn-cant {
+            background-color: #d32f2f; color: white; border: none;
+            width: 28px; height: 28px; font-weight: bold; border-radius: 4px; cursor: pointer;
+        }
+        .btn-cant.arroz { background-color: #2e7d32; }
+        .input-cant { width: 35px; text-align: center; font-weight: bold; border: 1px solid #ccc; }
+
+        /* Caja y Cambio */
+        .campo-pago {
+            display: flex; gap: 10px; align-items: center; margin: 15px 0; font-size: 1.1em;
+        }
+        .campo-pago input { padding: 8px; width: 100px; font-size: 1em; text-align: center;}
+
+        .total-box {
+            background-color: #333; color: white; padding: 15px;
+            border-radius: 8px; text-align: center; font-size: 1.3em; margin-top: 15px;
+        }
+        .vuelto-box { background-color: #2e7d32; font-weight: bold; }
+
+        .btn-accion {
+            width: 100%; border: none; padding: 14px; font-size: 1.1em;
+            font-weight: bold; border-radius: 8px; cursor: pointer; color: white; margin-top: 10px;
+        }
+        .btn-calcular { background-color: #d32f2f; }
+        .btn-registrar { background-color: #2e7d32; }
+        .btn-pdf { background-color: #0277bd; width: auto; padding: 8px 15px; font-size: 0.9em;}
+
+        /* Diseño de Pestañas de Reporte */
+        .tabs-reporte {
+            display: flex; gap: 5px; margin-bottom: 15px; background: #eee; padding: 5px; border-radius: 8px;
+        }
+        .tab-btn {
+            flex: 1; padding: 10px; background: none; border: none; font-weight: bold;
+            cursor: pointer; border-radius: 6px; font-size: 0.95em; color: #555;
+            transition: 0.2s;
+        }
+        .tab-btn.activo { background: #f57c00; color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+
+        /* Cuadro Resumen Informativo */
+        .resumen-reporte {
+            background-color: #fff3e0; border: 1px solid #ffe0b2; padding: 12px;
+            border-radius: 6px; margin-bottom: 15px; display: flex; justify-content: space-around;
+            text-align: center; font-size: 0.95em;
+        }
+        .resumen-reporte span { display: block; font-size: 1.3em; font-weight: bold; color: #d32f2f; }
+
+        /* Tarjetas de Pedido en pantalla */
+        .tarjeta-pedido {
+            border-left: 5px solid #f57c00; background-color: #fafafa;
+            padding: 15px; margin-bottom: 20px; border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .tarjeta-pedido.despachado { border-left-color: #2e7d32; background-color: #f1f8e9; }
+        .encabezado-pedido {
+            display: flex; justify-content: space-between; font-weight: bold;
+            border-bottom: 1px dashed #ccc; padding-bottom: 5px; margin-bottom: 10px;
+        }
+        .lista-detalles { margin: 5px 0; padding-left: 20px; font-size: 0.95em;}
+        .lista-detalles li { margin-bottom: 3px; }
+        
+        .btn-despacho {
+            padding: 6px 12px; font-size: 0.85em; font-weight: bold; border: none;
+            border-radius: 4px; cursor: pointer; color: white;
+        }
+        .status-pendiente { background-color: #e65100; }
+        .status-despachado { background-color: #2e7d32; }
+
+        .btn-limpiar-historial {
+            background-color: #757575; font-size: 0.85em; padding: 8px 15px; width: auto; margin-top: 15px;
+        }
+
+        /* Estilo para tabla de registros diarios */
+        .tabla-registros {
+            width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9em;
+        }
+        .tabla-registros th, .tabla-registros td {
+            border: 1px solid #ddd; padding: 8px; text-align: center;
+        }
+        .tabla-registros th { background-color: #333; color: white; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Pollos a la Canasta</h1>
+        <p style="margin:2px 0;">Panel de Control, Caja POS y Despacho</p>
+        <p class="credito">creado por ADROW-CONSULTORES</p>
+    </header>
+
+    <div class="container">
+        
+        <div id="ventana-inicio" class="seccion">
+            <h2>Nuevo Pedido</h2>
+            <button class="btn-opcion" onclick="seleccionarServicio('Para llevar')">🛍️ Para Llevar</button>
+            <button class="btn-opcion" onclick="seleccionarServicio('Para la mesa')">🍽️ Para la Mesa</button>
+        </div>
+
+        <div id="ventana-menu" class="seccion oculto">
+            <h2>Pedido: <span id="tipo-servicio-texto" style="color:#f57c00;"></span></h2>
+            
+            <div class="menu-item">
+                <h3> Pollo(PIERNA) + Papas</h3>
+                <div class="precio">14 Bs.</div>
+                <div class="fila-control">
+                    <span>Cantidad de Pollos:</span>
+                    <div class="contador">
+                        <button class="btn-cant" onclick="cambiarPollo('cant1', 'arroz1', -1)">-</button>
+                        <input type="number" id="cant1" class="input-cant" value="0" readonly>
+                        <button class="btn-cant" onclick="cambiarPollo('cant1', 'arroz1', 1)">+</button>
+                    </div>
+                </div>
+                <div class="fila-control">
+                    <span style="color: #2e7d32;">🌾 ¿Cuántos con Arroz?</span>
+                    <div class="contador">
+                        <button class="btn-cant arroz" onclick="cambiarArroz('cant1', 'arroz1', -1)">-</button>
+                        <input type="number" id="arroz1" class="input-cant" value="0" readonly>
+                        <button class="btn-cant arroz" onclick="cambiarArroz('cant1', 'arroz1', 1)">+</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="menu-item">
+                <h3> Pollo(ALA) + Papas</h3>
+                <div class="precio">18 Bs.</div>
+                <div class="fila-control">
+                    <span>Cantidad de Pollos:</span>
+                    <div class="contador">
+                        <button class="btn-cant" onclick="cambiarPollo('cant2', 'arroz2', -1)">-</button>
+                        <input type="number" id="cant2" class="input-cant" value="0" readonly>
+                        <button class="btn-cant" onclick="cambiarPollo('cant2', 'arroz2', 1)">+</button>
+                    </div>
+                </div>
+                <div class="fila-control">
+                    <span style="color: #2e7d32;">🌾 ¿Cuántos con Arroz?</span>
+                    <div class="contador">
+                        <button class="btn-cant arroz" onclick="cambiarArroz('cant2', 'arroz2', -1)">-</button>
+                        <input type="number" id="arroz2" class="input-cant" value="0" readonly>
+                        <button class="btn-cant arroz" onclick="cambiarArroz('cant2', 'arroz2', 1)">+</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="menu-item">
+                <h3> Pollo(PECHO) + Papas</h3>
+                <div class="precio">18 Bs.</div>
+                <div class="fila-control">
+                    <span>Cantidad de Pollos:</span>
+                    <div class="contador">
+                        <button class="btn-cant" onclick="cambiarPollo('cant3', 'arroz3', -1)">-</button>
+                        <input type="number" id="cant3" class="input-cant" value="0" readonly>
+                        <button class="btn-cant" onclick="cambiarPollo('cant3', 'arroz3', 1)">+</button>
+                    </div>
+                </div>
+                <div class="fila-control">
+                    <span style="color: #2e7d32;">🌾 ¿Cuántos con Arroz?</span>
+                    <div class="contador">
+                        <button class="btn-cant arroz" onclick="cambiarArroz('cant3', 'arroz3', -1)">-</button>
+                        <input type="number" id="arroz3" class="input-cant" value="0" readonly>
+                        <button class="btn-cant arroz" onclick="cambiarArroz('cant3', 'arroz3', 1)">+</button>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn-accion btn-calcular" onclick="procesarCaja()">🧮 Calcular Total</button>
+
+            <div id="zona-cobro" class="oculto">
+                <div class="total-box">Total a Pagar: <span id="monto-total">0</span> Bs.</div>
+                <div class="campo-pago">
+                    <label for="pago-cliente"><strong>Monto Pagado por Cliente:</strong></label>
+                    <input type="number" id="pago-cliente" min="0" oninput="calcularCambio()" placeholder="0"> Bs.
+                </div>
+                <div class="total-box vuelto-box">Cambio a Devolver: <span id="monto-vuelto">0</span> Bs.</div>
+                
+                <button class="btn-accion btn-registrar" onclick="registrarVenta()">💾 Registrar y Finalizar Venta</button>
+            </div>
+
+            <button style="background:none; border:none; color:#777; text-decoration:underline; cursor:pointer; display:block; margin: 15px auto 0 auto;" onclick="cancelarPedido()">← Cancelar / Volver</button>
+        </div>
+
+        <div class="seccion" id="seccion-reportes">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2>📋 Reportes e Historial Detallado</h2>
+                <button class="btn-accion btn-pdf" onclick="exportarTextoPDF()">📄 Exportar Texto PDF</button>
+            </div>
+
+            <div class="tabs-reporte">
+                <button class="tab-btn activo" id="tab-hoy" onclick="filtrarPeriodo('hoy')">Hoy</button>
+                <button class="tab-btn" id="tab-semana" onclick="filtrarPeriodo('semana')">Esta Semana</button>
+                <button class="tab-btn" id="tab-mes" onclick="filtrarPeriodo('mes')">Este Mes</button>
+                <button class="tab-btn" id="tab-todo" onclick="filtrarPeriodo('todo')">Todo</button>
+                <button class="tab-btn" id="tab-cierres" onclick="filtrarPeriodo('cierres')" style="background-color: #cfd8dc;">📁 Historial Cierres</button>
+            </div>
+
+            <div class="resumen-reporte" id="resumen-estadistico-box">
+                <div>Pedidos Filtrados: <span id="resumen-pedidos">0</span></div>
+                <div>Pollos Despachados: <span id="resumen-pollos">0 u.</span></div>
+                <div>Total Recaudado: <span id="resumen-dinero">0 Bs.</span></div>
+            </div>
+
+            <div id="lista-pedidos-detallados">
+                </div>
+            
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <button class="btn-accion btn-limpiar-historial" onclick="reiniciarYRegistrarDiario()">🔒 Reiniciar y Registrar Venta Diaria</button>
+                <button class="btn-cant" style="background-color:#c62828; width:auto; padding:5px 10px; font-size:0.75em;" onclick="borrarTodoElSistema()">⚠️ Formatear Todo</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let servicioSeleccionado = "";
+        let totalPedido = 0;
+        let filtroActual = "hoy";
+        let listadoFiltradoMemoria = []; // Almacena el filtro activo para la exportación de texto real
+        
+        // Carga de bases de datos desde el navegador
+        let ventasHistorial = JSON.parse(localStorage.getItem('v_detalles_final')) || [];
+        let cierresDiarios = JSON.parse(localStorage.getItem('v_cierres_diarios')) || [];
+
+        function seleccionarServicio(tipo) {
+            servicioSeleccionado = tipo;
+            document.getElementById('tipo-servicio-texto').innerText = tipo;
+            document.getElementById('ventana-inicio').classList.add('oculto');
+            document.getElementById('ventana-menu').classList.remove('oculto');
+        }
+
+        function cambiarPollo(idPollo, idArroz, valor) {
+            let inputP = document.getElementById(idPollo);
+            let nuevoP = parseInt(inputP.value) + valor;
+            if (nuevoP >= 0) {
+                inputP.value = nuevoP;
+                let inputA = document.getElementById(idArroz);
+                if (parseInt(inputA.value) > nuevoP) { inputA.value = nuevoP; }
+            }
+        }
+
+        function cambiarArroz(idPollo, idArroz, valor) {
+            let maxPollos = parseInt(document.getElementById(idPollo).value);
+            let inputA = document.getElementById(idArroz);
+            let nuevoA = parseInt(inputA.value) + valor;
+            if (nuevoA >= 0 && nuevoA <= maxPollos) { inputA.value = nuevoA; }
+        }
+
+        function procesarCaja() {
+            const c1 = parseInt(document.getElementById('cant1').value);
+            const c2 = parseInt(document.getElementById('cant2').value);
+            const c3 = parseInt(document.getElementById('cant3').value);
+
+            totalPedido = (c1 * 14) + (c2 * 18) + (c3 * 18);
+            if(totalPedido === 0) { alert("Inserte al menos 1 porción."); return; }
+
+            document.getElementById('monto-total').innerText = totalPedido;
+            document.getElementById('pago-cliente').value = "";
+            document.getElementById('monto-vuelto').innerText = "0";
+            document.getElementById('zona-cobro').classList.remove('oculto');
+        }
+
+        function calcularCambio() {
+            let pago = parseFloat(document.getElementById('pago-cliente').value) || 0;
+            let vuelto = pago - totalPedido;
+            document.getElementById('monto-vuelto').innerText = vuelto >= 0 ? vuelto.toFixed(1) : "0 (Falta Dinero)";
+        }
+
+        function registrarVenta() {
+            let pago = parseFloat(document.getElementById('pago-cliente').value) || 0;
+            if (pago < totalPedido) { alert("El dinero es insuficiente."); return; }
+
+            const c1 = parseInt(document.getElementById('cant1').value);
+            const c2 = parseInt(document.getElementById('cant2').value);
+            const c3 = parseInt(document.getElementById('cant3').value);
+            const a1 = parseInt(document.getElementById('arroz1').value);
+            const a2 = parseInt(document.getElementById('arroz2').value);
+            const a3 = parseInt(document.getElementById('arroz3').value);
+
+            let ahora = new Date();
+            let horaStr = ahora.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            let fechaStr = ahora.toLocaleDateString();
+
+            let itemsPedidos = [];
+            if(c1 > 0) itemsPedidos.push({ nombre: " Pollo(PIERNA) + Papas", cant: c1, arroz: a1, subtotal: c1*14 });
+            if(c2 > 0) itemsPedidos.push({ nombre: " Pollo(ALA) + Papas", cant: c2, arroz: a2, subtotal: c2*18 });
+            if(c3 > 0) itemsPedidos.push({ nombre: " Pollo(PECHO) + Papas", cant: c3, arroz: a3, subtotal: c3*18 });
+
+            const nuevaVenta = {
+                id: ventasHistorial.length + 1,
+                fechaObj: ahora.getTime(),
+                fecha: fechaStr,
+                hora: horaStr,
+                servicio: servicioSeleccionado,
+                detalles: itemsPedidos,
+                total: totalPedido,
+                totalPollos: (c1+c2+c3),
+                despachado: false
+            };
+
+            ventasHistorial.push(nuevaVenta);
+            localStorage.setItem('v_detalles_final', JSON.stringify(ventasHistorial));
+
+            alert(`¡Pedido N° ${nuevaVenta.id} registrado con éxito!`);
+            cancelarPedido();
+            filtrarPeriodo(filtroActual);
+        }
+
+        function cancelarPedido() {
+            document.getElementById('cant1').value = 0; document.getElementById('cant2').value = 0; document.getElementById('cant3').value = 0;
+            document.getElementById('arroz1').value = 0; document.getElementById('arroz2').value = 0; document.getElementById('arroz3').value = 0;
+            document.getElementById('zona-cobro').classList.add('oculto');
+            document.getElementById('ventana-menu').classList.add('oculto');
+            document.getElementById('ventana-inicio').classList.remove('oculto');
+        }
+
+        // --- FILTROS DE TIEMPO ---
+        function filtrarPeriodo(periodo) {
+            filtroActual = periodo;
+            
+            const botones = document.querySelectorAll('.tab-btn');
+            botones.forEach(b => b.classList.remove('activo'));
+            document.getElementById('tab-' + periodo).classList.add('activo');
+
+            if(periodo === 'cierres') {
+                document.getElementById('resumen-estadistico-box').style.setProperty('display', 'none', 'important');
+                renderizarHistorialCierres();
+                return;
+            } else {
+                document.getElementById('resumen-estadistico-box').style.display = 'flex';
+            }
+
+            const ahora = new Date();
+            listadoFiltradoMemoria = [];
+
+            ventasHistorial.forEach(p => {
+                const fechaPedido = new Date(p.fechaObj);
+                
+                if (periodo === 'hoy') {
+                    if (fechaPedido.toDateString() === ahora.toDateString()) listadoFiltradoMemoria.push(p);
+                } 
+                else if (periodo === 'semana') {
+                    let diffDias = Math.ceil(Math.abs(ahora - fechaPedido) / (1000 * 60 * 60 * 24));
+                    if (diffDias <= 7) listadoFiltradoMemoria.push(p);
+                } 
+                else if (periodo === 'mes') {
+                    if (fechaPedido.getMonth() === ahora.getMonth() && fechaPedido.getFullYear() === ahora.getFullYear()) {
+                        listadoFiltradoMemoria.push(p);
+                    }
+                } 
+                else if (periodo === 'todo') {
+                    listadoFiltradoMemoria.push(p);
+                }
+            });
+
+            renderizarPedidosPantalla(listadoFiltradoMemoria);
+        }
+
+        function renderizarPedidosPantalla(lista) {
+            const contenedor = document.getElementById('lista-pedidos-detallados');
+            contenedor.innerHTML = "";
+
+            let acumDinero = 0; let acumPollos = 0;
+
+            if(lista.length === 0) {
+                contenedor.innerHTML = `<p style="text-align:center; color:#777; padding:20px;">No hay ventas detalladas activas en esta sección.</p>`;
+                document.getElementById('resumen-pedidos').innerText = "0";
+                document.getElementById('resumen-pollos').innerText = "0 u.";
+                document.getElementById('resumen-dinero').innerText = "0 Bs.";
+                return;
+            }
+
+            for (let i = lista.length - 1; i >= 0; i--) {
+                const p = lista[i];
+                acumDinero += p.total; acumPollos += p.totalPollos;
+
+                let claseDespacho = p.despachado ? "tarjeta-pedido despachado" : "tarjeta-pedido";
+                let textoBotDespacho = p.despachado ? "Despachado ✅" : "Pendiente ⏳";
+                let claseBotonStatus = p.despachado ? "btn-despacho status-despachado" : "btn-despacho status-pendiente";
+
+                let htmlPedido = `
+                    <div class="${claseDespacho}">
+                        <div class="encabezado-pedido">
+                            <span>📋 PEDIDO N° ${p.id}</span>
+                            <span style="color:#666; font-size:0.9em;">${p.fecha} - ${p.hora}</span>
+                        </div>
+                        <div><strong>Servicio:</strong> ${p.servicio}</div>
+                        <ul class="lista-detalles">
+                `;
+
+                p.detalles.forEach(item => {
+                    let detArroz = item.arroz > 0 ? `<span style="color:#2e7d32;">(${item.arroz} llevan Arroz 🌾)</span>` : `<span style="color:#777;">(Sin arroz)</span>`;
+                    htmlPedido += `<li>• <strong>${item.cant}x</strong> ${item.nombre} ${detArroz} -> <strong>${item.subtotal} Bs.</strong></li>`;
+                });
+
+                let idxReal = ventasHistorial.findIndex(v => v.id === p.id);
+
+                htmlPedido += `
+                        </ul>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; border-top:1px dashed #eee; padding-top:8px;">
+                            <div><strong>Total Pagado:</strong> <span style="color:#d32f2f; font-size:1.1em;">${p.total} Bs.</span></div>
+                            <button class="${claseBotonStatus}" onclick="cambiarEstadoDespacho(${idxReal})">${textoBotDespacho}</button>
+                        </div>
+                    </div>
+                `;
+                contenedor.innerHTML += htmlPedido;
+            }
+
+            document.getElementById('resumen-pedidos').innerText = lista.length;
+            document.getElementById('resumen-pollos').innerText = acumPollos + " u.";
+            document.getElementById('resumen-dinero').innerText = acumDinero + " Bs.";
+        }
+
+        function cambiarEstadoDespacho(idxReal) {
+            ventasHistorial[idxReal].despachado = !ventasHistorial[idxReal].despachado;
+            localStorage.setItem('v_detalles_final', JSON.stringify(ventasHistorial));
+            filtrarPeriodo(filtroActual);
+        }
+
+        // --- SISTEMA SOLICITADO: REINICIO Y REGISTRO AUTOMÁTICO ---
+        function reiniciarYRegistrarDiario() {
+            const ahora = new Date();
+            const hoyString = ahora.toLocaleDateString();
+
+            // Filtrar los pedidos que pertenecen estrictamente al día de hoy para el cuadre
+            let ventasDeHoy = ventasHistorial.filter(p => {
+                return p.fecha === hoyString;
+            });
+
+            if(ventasDeHoy.length === 0) {
+                alert("No hay ventas registradas el día de hoy. No se puede realizar un cierre en cero.");
+                return;
+            }
+
+            if(confirm(`¿Deseas cerrar la caja del día?\nSe procesarán ${ventasDeHoy.length} pedidos de hoy y se limpiará la pantalla.`)) {
+                
+                let dineroDiario = 0;
+                let pollosDiarios = 0;
+
+                ventasDeHoy.forEach(v => {
+                    dineroDiario += v.total;
+                    pollosDiarios += v.totalPollos;
+                });
+
+                // Crear registro diario automatizado histórico
+                const nuevoCierreDiario = {
+                    idCierre: cierresDiarios.length + 1,
+                    fechaCierre: hoyString,
+                    totalPedidos: ventasDeHoy.length,
+                    totalPollos: pollosDiarios,
+                    totalDinero: dineroDiario
+                };
+
+                // Guardar en el almacén de cierres
+                cierresDiarios.push(nuevoCierreDiario);
+                localStorage.setItem('v_cierres_diarios', JSON.stringify(cierresDiarios));
+
+                // Limpiar únicamente las ventas del día actual de la base de datos principal
+                ventasHistorial = ventasHistorial.filter(p => p.fecha !== hoyString);
+                localStorage.setItem('v_detalles_final', JSON.stringify(ventasHistorial));
+
+                alert(`🔒 ¡Cierre Guardado!\nRegistro N°: ${nuevoCierreDiario.idCierre}\nRecaudado: ${dineroDiario} Bs.\nLa pantalla diaria se ha limpiado.`);
+                filtrarPeriodo('hoy');
+            }
+        }
+
+        function renderizarHistorialCierres() {
+            const contenedor = document.getElementById('lista-pedidos-detallados');
+            contenedor.innerHTML = "";
+
+            if(cierresDiarios.length === 0) {
+                contenedor.innerHTML = `<p style="text-align:center; color:#777; padding:20px;">No se registran cierres de caja guardados.</p>`;
+                return;
+            }
+
+            let htmlTabla = `
+                <h3 style="color:#333; margin-top:0;">Historial de Cierres Diarios Guardados</h3>
+                <table class="tabla-registros">
+                    <thead>
+                        <tr>
+                            <th>N° Registro</th>
+                            <th>Fecha</th>
+                            <th>Pedidos Atendidos</th>
+                            <th>Pollos Vendidos</th>
+                            <th>Total Caja</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            for(let i = cierresDiarios.length - 1; i >= 0; i--) {
+                const c = cierresDiarios[i];
+                htmlTabla += `
+                    <tr>
+                        <td><strong># ${c.idCierre}</strong></td>
+                        <td>${c.fechaCierre}</td>
+                        <td>${c.totalPedidos} ord.</td>
+                        <td>${c.totalPollos} u.</td>
+                        <td style="color:#2e7d32; font-weight:bold;">${c.totalDinero} Bs.</td>
+                    </tr>
+                `;
+            }
+
+            htmlTabla += `</tbody></table>`;
+            contenedor.innerHTML = htmlTabla;
+        }
+
+        function borrarTodoElClaramente() {
+            if(confirm("Alerta Máxima: ¿Deseas formatear por completo el sistema? Se borrarán cierres históricos y ventas.")) {
+                localStorage.clear();
+                ventasHistorial = [];
+                cierresDiarios = [];
+                location.reload();
+            }
+        }
+
+        // --- SISTEMA SOLICITADO: EXPORTACIÓN A PDF EN TEXTO REAL NATIVO ---
+        function exportarTextoPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+            let y = 15; // Margen de inicio vertical
+
+            // Configuración Encabezado
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(20);
+            doc.setTextColor(211, 47, 47); // Rojo marca
+            doc.text("POLLOS A LA CANASTA", 15, y);
+            
+            y += 7;
+            doc.setFontSize(11);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(80, 80, 80);
+            doc.text("Panel de Control, Caja POS y Despacho", 15, y);
+            
+            y += 5;
+            doc.setFont("helvetica", "oblique");
+            doc.setTextColor(120, 120, 120);
+            doc.text("creado por ADROW-CONSULTORES", 15, y);
+
+            y += 8;
+            doc.setLineWidth(0.5);
+            doc.setDrawColor(245, 124, 0); // Línea naranja divisoria
+            doc.line(15, y, 195, y);
+
+            y += 10;
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(13);
+            doc.setTextColor(0, 0, 0);
+            
+            if(filtroActual === 'cierres') {
+                doc.text(`REPORTE: HISTORIAL DE CIERRES DIARIOS ACUMULADOS`, 15, y);
+                y += 10;
+                
+                doc.setFontSize(10);
+                doc.text("N° Reg.      Fecha            Pedidos       Pollos Vend.     Monto Total", 15, y);
+                y += 4;
+                doc.line(15, y, 195, y);
+                y += 7;
+
+                doc.setFont("helvetica", "normal");
+                cierresDiarios.forEach(c => {
+                    if (y > 275) { doc.addPage(); y = 15; }
+                    let linea = `#${c.idCierre.toString().padEnd(10)} ${c.fechaCierre.padEnd(16)} ${c.totalPedidos.toString().padEnd(14)} ${c.totalPollos.toString().padEnd(16)} ${c.totalDinero} Bs.`;
+                    doc.text(linea, 15, y);
+                    y += 6;
+                });
+            } 
+            else {
+                doc.text(`REPORTE DETALLADO DE VENTAS - PERÍODO: ${filtroActual.toUpperCase()}`, 15, y);
+                
+                // Calcular Totales del Reporte para el encabezado del PDF
+                let totalDinero = 0; let totalPollos = 0;
+                listadoFiltradoMemoria.forEach(p => { totalDinero += p.total; totalPollos += p.totalPollos; });
+
+                y += 7;
+                doc.setFontSize(11);
+                doc.setFont("helvetica", "bold");
+                doc.text(`Pedidos Encontrados: ${listadoFiltradoMemoria.length}   |   Total Pollos: ${totalPollos} u.   |   Total Recaudado: ${totalDinero} Bs.`, 15, y);
+                
+                y += 10;
+
+                if(listadoFiltradoMemoria.length === 0) {
+                    doc.setFont("helvetica", "normal");
+                    doc.text("No se registran movimientos en este rango de tiempo.", 15, y);
+                } else {
+                    // Listar cada pedido detallado en puro texto indexable
+                    listadoFiltradoMemoria.forEach(p => {
+                        if (y > 250) { doc.addPage(); y = 20; }
+
+                        doc.setFont("helvetica", "bold");
+                        doc.setFontSize(11);
+                        doc.setTextColor(211, 47, 47);
+                        doc.text(`PEDIDO N° ${p.id}  (${p.fecha} - ${p.hora})`, 15, y);
+                        
+                        doc.setFont("helvetica", "normal");
+                        doc.setFontSize(10);
+                        doc.setTextColor(0,0,0);
+                        y += 5;
+                        doc.text(`Servicio: ${p.servicio}  |  Estado: ${p.despachado ? 'Despachado' : 'Pendiente'}`, 17, y);
+                        
+                        p.detalles.forEach(item => {
+                            y += 5;
+                            if (y > 275) { doc.addPage(); y = 20; }
+                            let txtArroz = item.arroz > 0 ? `(${item.arroz} c/ Arroz)` : `(Sin Arroz)`;
+                            doc.text(`  • ${item.cant}x ${item.nombre} ${txtArroz} -> ${item.subtotal} Bs.`, 17, y);
+                        });
+
+                        y += 6;
+                        doc.setFont("helvetica", "bold");
+                        doc.text(`  Total Importe: ${p.total} Bs.`, 17, y);
+                        y += 5;
+                        doc.setDrawColor(220, 220, 220);
+                        doc.line(15, y, 195, y);
+                        y += 8;
+                    });
+                }
+            }
+
+            // Descargar el archivo PDF en texto real nativo
+            doc.save(`Reporte_Texto_PollosLaCanasta_${filtroActual}.pdf`);
+        }
+
+        function borrarTodoElSistema() {
+            if(confirm("⚠️ ATENCIÓN: Esta acción eliminará permanentemente TODOS los pedidos y el historial de cierres diarios de ADROW-CONSULTORES. ¿Continuar?")) {
+                // localStorage.clear();
+                // ventasHistorial = [];
+                // cierresDiarios = [];
+                // alert("Sistema reiniciado a cero.");
+                // location.reload();
+            }
+        }
+
+        // Arranque de control por defecto en ventana "Hoy"
+        filtrarPeriodo('hoy');
+    </script>
+</body>
+</html>
