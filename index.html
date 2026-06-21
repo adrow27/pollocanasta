@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema POS Cloud - Pollos a la Canasta</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
@@ -300,6 +299,7 @@
 
         function cancelarPedido() {
             document.getElementById('cant1').value = 0; document.getElementById('cant2').value = 0; document.getElementById('cant3').value = 0;
+            document.getElementById('arroz1').value = 0; document.getElementById('arroz2').value = 0; document.getElementById('arroz3').value = 0;
             document.getElementById('zona-cobro').classList.add('oculto');
             document.getElementById('ventana-menu').classList.add('oculto');
             document.getElementById('ventana-inicio').classList.remove('oculto');
@@ -331,27 +331,34 @@
 
         function renderizarPedidosPantalla(lista) {
             const contenedor = document.getElementById('lista-pedidos-detallados');
-            contenedor.innerHTML = "";
+            let cadenaFinalHtml = ""; // Corregido: acumulamos en un string limpio
             let din = 0; let pol = 0;
 
             lista.forEach(p => {
                 din += p.total; pol += p.total_pollos;
-                let html = `
+                let htmlPedido = `
                     <div class="tarjeta-pedido ${p.despachado ? 'despachado' : ''}">
                         <div class="encabezado-pedido"><span>📋 PEDIDO N° ${p.id}</span><span>${p.fecha} - ${p.hora}</span></div>
                         <div><strong>Servicio:</strong> ${p.servicio}</div>
                         <ul class="lista-detalles">`;
+                
                 p.detalles.forEach(i => {
-                    html += `<li>• ${i.cant}x ${i.nombre} (🌾 ${i.arroz}) -> ${i.subtotal} Bs.</li>`;
+                    htmlPedido += `<li>• ${i.cant}x ${i.nombre} (🌾 ${i.arroz}) -> ${i.subtotal} Bs.</li>`;
                 });
-                html += `</ul>
+                
+                htmlPedido += `</ul>
                         <div style="display:flex; justify-content:space-between; margin-top:10px; border-top:1px dashed #eee; padding-top:8px;">
                             <div><strong>Total:</strong> <span style="color:#d32f2f;">${p.total} Bs.</span></div>
-                            <button class="btn-despacho ${p.despachado?'status-despachado':'status-pendiente'}" onclick="cambiarEstadoDespacho(${p.id}, ${p.despachado})">${p.despachado?'Despachado ✅':'Pendiente ⏳'}</button>
+                            <button class="btn-despacho ${p.despachado ? 'status-despachado' : 'status-pendiente'}" onclick="cambiarEstadoDespacho(${p.id}, ${p.despachado})">${p.despachado ? 'Despachado ✅' : 'Pendiente ⏳'}</button>
                         </div>
                     </div>`;
-                contenedor.innerHTML = html + contenedor.innerHTML;
+                
+                // Los pedidos más nuevos se van acumulando arriba
+                cadenaFinalHtml = htmlPedido + cadenaFinalHtml;
             });
+
+            // Una sola inyección limpia en el DOM
+            contenedor.innerHTML = cadenaFinalHtml;
 
             document.getElementById('resumen-pedidos').innerText = lista.length;
             document.getElementById('resumen-pollos').innerText = pol + " u.";
