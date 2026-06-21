@@ -201,7 +201,7 @@
     </div>
 
     <script>
-        // CONFIGURACIÓN CENTRALIZADA ÚNICA
+    // CONFIGURACIÓN CENTRALIZADA ÚNICA
         const SUPABASE_URL = "https://xkqbvjhfvmoahewmghtb.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhrcWJ2amhmdm1vYWhld21naHRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwMDgxMDksImV4cCI6MjA5NzU4NDEwOX0.AP-rktdoGYrllyS9ENl5uH-4jYgBsj1orZguwOBZRk0";
         
@@ -331,7 +331,7 @@
 
         function renderizarPedidosPantalla(lista) {
             const contenedor = document.getElementById('lista-pedidos-detallados');
-            let cadenaFinalHtml = ""; // Corregido: acumulamos en un string limpio
+            let cadenaFinalHtml = ""; 
             let din = 0; let pol = 0;
 
             lista.forEach(p => {
@@ -353,11 +353,9 @@
                         </div>
                     </div>`;
                 
-                // Los pedidos más nuevos se van acumulando arriba
                 cadenaFinalHtml = htmlPedido + cadenaFinalHtml;
             });
 
-            // Una sola inyección limpia en el DOM
             contenedor.innerHTML = cadenaFinalHtml;
 
             document.getElementById('resumen-pedidos').innerText = lista.length;
@@ -378,7 +376,6 @@
             let totalDinero = deHoy.reduce((acc, p) => acc + p.total, 0);
             let totalPollos = deHoy.reduce((acc, p) => acc + p.total_pollos, 0);
 
-            // Guardar registro diario en Supabase
             await supabase.from('cierres_diarios').insert([{
                 fecha_cierre: hoy,
                 total_pedidos: deHoy.length,
@@ -386,7 +383,6 @@
                 total_dinero: totalDinero
             }]);
 
-            // Eliminar ventas locales ya procesadas para limpiar pantalla
             for(let p of deHoy) {
                 await supabase.from('ventas_pollo').delete().eq('id', p.id);
             }
@@ -410,9 +406,9 @@
             doc.text("REPORTE CLOUD - ADROW-CONSULTORES", 15, 15);
             doc.save("Reporte_Nube.pdf");
         }
-
-        // Ejecutar sincronización al cargar
-        sincronizarConNube();
+    
     </script>
+    
+        sincronizarConNube();
 </body>
 </html>
