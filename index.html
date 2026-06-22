@@ -234,7 +234,7 @@
         const SUPABASE_URL = "https://xkqbvjhfvmoahewmghtb.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhrcWJ2amhmdm1vYWhld21naHRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwMDgxMDksImV4cCI6MjA5NzU4NDEwOX0.AP-rktdoGYrllyS9ENl5uH-4jYgBsj1orZguwOBZRk0";
         
-        // SOLUCIÓN AL ERROR DE CONSOLA: Nombre único para evitar colisionar con la librería global
+        // CAMBIO CRÍTICO: Usamos 'miSupabaseClient' para evitar que choque con la palabra reservada 'supabase'
         let miSupabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let servicioSeleccionado = "";
@@ -348,6 +348,7 @@
             if(c2 > 0) itemsPedidos.push({ nombre: "Ala", cant: c2, arroz: parseInt(document.getElementById('arroz2').value), subtotal: c2*18 });
             if(c3 > 0) itemsPedidos.push({ nombre: "Pecho", cant: c3, arroz: parseInt(document.getElementById('arroz3').value), subtotal: c3*18 });
 
+            // Enviamos los datos usando la variable corregida
             const { error } = await miSupabaseClient.from('ventas_pollo').insert([{
                 fecha_obj: ahora.getTime(),
                 fecha: ahora.toLocaleDateString(),
@@ -372,7 +373,7 @@
             document.getElementById('cant1').value = 0; document.getElementById('cant2').value = 0; document.getElementById('cant3').value = 0;
             document.getElementById('arroz1').value = 0; document.getElementById('arroz2').value = 0; document.getElementById('arroz3').value = 0;
             
-            // MEJORA SOLICITADA: Limpiar inputs de cobro y cambio a 0 completamente
+            // Campos limpios para la siguiente venta
             document.getElementById('pago-cliente').value = ""; 
             document.getElementById('monto-vuelto').innerText = "0";
             
@@ -444,13 +445,11 @@
             await sincronizarConNube();
         }
 
-        // --- MEJORA SOLICITADA: EXPORTA PDF COMPLETO AUTOMÁTICAMENTE AL CERRAR LA CAJA ---
         async function reiniciarYRegistrarDiario() {
             const hoy = new Date().toLocaleDateString();
             let deHoy = ventasHistorial.filter(p => p.fecha === hoy);
             if(deHoy.length === 0) { alert("No hay ventas registradas el día de hoy para cerrar."); return; }
 
-            // 1. Exportación Forzada del Reporte de Cierre en PDF automático
             alert("Generando y descargando el PDF de resguardo del Cierre de Caja...");
             filtrarPeriodo('hoy'); 
             exportarTextoPDF(); 
@@ -458,7 +457,6 @@
             let totalDinero = deHoy.reduce((acc, p) => acc + p.total, 0);
             let totalPollos = deHoy.reduce((acc, p) => acc + p.total_pollos, 0);
 
-            // 2. Insertar balance en la tabla 'cierres_diarios'
             const { error: errorInsert } = await miSupabaseClient.from('cierres_diarios').insert([{
                 fecha_cierre: hoy,
                 total_pedidos: deHoy.length,
@@ -471,7 +469,6 @@
                 return;
             }
 
-            // 3. Limpiar las ventas del día de la base de datos principal
             for(let p of deHoy) {
                 await miSupabaseClient.from('ventas_pollo').delete().eq('id', p.id);
             }
@@ -493,7 +490,6 @@
             contenedor.innerHTML = html + "</tbody></table>";
         }
 
-        // --- DISEÑO ESTÉTICO FIEL DE PDF ---
         function exportarTextoPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
@@ -502,7 +498,6 @@
             const colorGrisOscuro = "#333333";
             const colorLinea = "#e0e0e0";
 
-            // LOGO ENCABEZADO
             doc.setFont("Helvetica", "bold");
             doc.setFontSize(22);
             doc.setTextColor(colorRojo);
@@ -514,7 +509,6 @@
             doc.text("Panel de Control, Caja POS y Despacho", 14, 26);
             doc.text("creado por ADROW-CONSULTORES", 14, 31);
 
-            // Línea divisoria superior
             doc.setDrawColor(211, 47, 47);
             doc.setLineWidth(0.8);
             doc.line(14, 36, 196, 36);
