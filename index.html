@@ -234,7 +234,7 @@
         const SUPABASE_URL = "https://xkqbvjhfvmoahewmghtb.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhrcWJ2amhmdm1vYWhld21naHRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwMDgxMDksImV4cCI6MjA5NzU4NDEwOX0.AP-rktdoGYrllyS9ENl5uH-4jYgBsj1orZguwOBZRk0";
         
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let servicioSeleccionado = "";
         let totalPedido = 0;
@@ -258,7 +258,7 @@
             }
 
             // Llamada nativa de autenticación de Supabase
-            const { data, error } = await supabase.auth.signInWithPassword({
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
                 email: email,
                 password: password
             });
@@ -276,7 +276,7 @@
         }
 
         async function cerrarSesion() {
-            await supabase.auth.signOut();
+            await supabaseClient.auth.signOut();
             document.getElementById('app-pos').classList.add('oculto');
             document.getElementById('btn-cerrar-sesion').classList.add('oculto');
             document.getElementById('ventana-login').classList.remove('oculto');
@@ -285,8 +285,8 @@
 
         // --- FUNCIONES POS ---
         async function sincronizarConNube() {
-            let { data: ventas, error: e1 } = await supabase.from('ventas_pollo').select('*');
-            let { data: cierres, error: e2 } = await supabase.from('cierres_diarios').select('*');
+            let { data: ventas, error: e1 } = await supabaseClient.from('ventas_pollo').select('*');
+            let { data: cierres, error: e2 } = await supabaseClient.from('cierres_diarios').select('*');
             
             if(!e1) ventasHistorial = ventas || [];
             if(!e2) cierresDiarios = cierres || [];
@@ -344,7 +344,7 @@
             if(c2 > 0) itemsPedidos.push({ nombre: "Ala", cant: c2, arroz: parseInt(document.getElementById('arroz2').value), subtotal: c2*18 });
             if(c3 > 0) itemsPedidos.push({ nombre: "Pecho", cant: c3, arroz: parseInt(document.getElementById('arroz3').value), subtotal: c3*18 });
 
-            const { error } = await supabase.from('ventas_pollo').insert([{
+            const { error } = await supabaseClient.from('ventas_pollo').insert([{
                 fecha_obj: ahora.getTime(),
                 fecha: ahora.toLocaleDateString(),
                 hora: ahora.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
@@ -431,7 +431,7 @@
         }
 
         async function cambiarEstadoDespacho(id, estadoActual) {
-            await supabase.from('ventas_pollo').update({ despachado: !estadoActual }).eq('id', id);
+            await supabaseClient.from('ventas_pollo').update({ despachado: !estadoActual }).eq('id', id);
             sincronizarConNube();
         }
 
@@ -443,7 +443,7 @@
             let totalDinero = deHoy.reduce((acc, p) => acc + p.total, 0);
             let totalPollos = deHoy.reduce((acc, p) => acc + p.total_pollos, 0);
 
-            await supabase.from('cierres_diarios').insert([{
+            await supabaseClient.from('cierres_diarios').insert([{
                 fecha_cierre: hoy,
                 total_pedidos: deHoy.length,
                 total_pollos: totalPollos,
@@ -451,7 +451,7 @@
             }]);
 
             for(let p of deHoy) {
-                await supabase.from('ventas_pollo').delete().eq('id', p.id);
+                await supabaseClient.from('ventas_pollo').delete().eq('id', p.id);
             }
 
             alert("🔒 Cierre Diario subido a la nube.");
