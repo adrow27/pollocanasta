@@ -234,7 +234,7 @@
         const SUPABASE_URL = "https://xkqbvjhfvmoahewmghtb.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhrcWJ2amhmdm1vYWhld21naHRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwMDgxMDksImV4cCI6MjA5NzU4NDEwOX0.AP-rktdoGYrllyS9ENl5uH-4jYgBsj1orZguwOBZRk0";
         
-        // CORRECCIÓN TOTAL AL ERROR DE CONSOLA: Usamos una variable clara sin sobreescribir el espacio global
+        // SOLUCIÓN AL ERROR DE CONSOLA: Nombre único para evitar colisionar con la librería global
         let miSupabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let servicioSeleccionado = "";
@@ -258,7 +258,6 @@
                 return;
             }
 
-            // Si el cajero ingresa un nombre simple como "cajero1", le concatenamos el dominio de forma invisible
             let emailFinal = emailInput;
             if (!emailInput.includes('@')) {
                 emailFinal = emailInput + "@pos.com";
@@ -372,6 +371,11 @@
         function cancelarPedido() {
             document.getElementById('cant1').value = 0; document.getElementById('cant2').value = 0; document.getElementById('cant3').value = 0;
             document.getElementById('arroz1').value = 0; document.getElementById('arroz2').value = 0; document.getElementById('arroz3').value = 0;
+            
+            // MEJORA SOLICITADA: Limpiar inputs de cobro y cambio a 0 completamente
+            document.getElementById('pago-cliente').value = ""; 
+            document.getElementById('monto-vuelto').innerText = "0";
+            
             document.getElementById('zona-cobro').classList.add('oculto');
             document.getElementById('ventana-menu').classList.add('oculto');
             document.getElementById('ventana-inicio').classList.remove('oculto');
@@ -440,15 +444,21 @@
             await sincronizarConNube();
         }
 
+        // --- MEJORA SOLICITADA: EXPORTA PDF COMPLETO AUTOMÁTICAMENTE AL CERRAR LA CAJA ---
         async function reiniciarYRegistrarDiario() {
             const hoy = new Date().toLocaleDateString();
             let deHoy = ventasHistorial.filter(p => p.fecha === hoy);
             if(deHoy.length === 0) { alert("No hay ventas registradas el día de hoy para cerrar."); return; }
 
+            // 1. Exportación Forzada del Reporte de Cierre en PDF automático
+            alert("Generando y descargando el PDF de resguardo del Cierre de Caja...");
+            filtrarPeriodo('hoy'); 
+            exportarTextoPDF(); 
+
             let totalDinero = deHoy.reduce((acc, p) => acc + p.total, 0);
             let totalPollos = deHoy.reduce((acc, p) => acc + p.total_pollos, 0);
 
-            // Guardamos el balance en la tabla 'cierres_diarios'
+            // 2. Insertar balance en la tabla 'cierres_diarios'
             const { error: errorInsert } = await miSupabaseClient.from('cierres_diarios').insert([{
                 fecha_cierre: hoy,
                 total_pedidos: deHoy.length,
@@ -457,16 +467,16 @@
             }]);
 
             if (errorInsert) {
-                alert("Error al guardar el cierre diario: " + errorInsert.message);
+                alert("Error al guardar el cierre en la nube: " + errorInsert.message);
                 return;
             }
 
-            // Una vez guardado con éxito, limpiamos las ventas individuales de la tabla principal
+            // 3. Limpiar las ventas del día de la base de datos principal
             for(let p of deHoy) {
                 await miSupabaseClient.from('ventas_pollo').delete().eq('id', p.id);
             }
 
-            alert("🔒 Cierre Diario subido a la nube con éxito y caja vaciada.");
+            alert("🔒 Cierre Diario subido a la nube con éxito y tabla de ventas limpiada.");
             await sincronizarConNube();
         }
 
@@ -483,12 +493,11 @@
             contenedor.innerHTML = html + "</tbody></table>";
         }
 
-        // --- EXPORTACIÓN A PDF COPIANDO EL DISEÑO ORIGINAL EXACTO ---
+        // --- DISEÑO ESTÉTICO FIEL DE PDF ---
         function exportarTextoPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             
-            // Paleta de colores corporativa
             const colorRojo = "#d32f2f";
             const colorGrisOscuro = "#333333";
             const colorLinea = "#e0e0e0";
@@ -505,7 +514,7 @@
             doc.text("Panel de Control, Caja POS y Despacho", 14, 26);
             doc.text("creado por ADROW-CONSULTORES", 14, 31);
 
-            // Línea roja superior gruesa
+            // Línea divisoria superior
             doc.setDrawColor(211, 47, 47);
             doc.setLineWidth(0.8);
             doc.line(14, 36, 196, 36);
@@ -513,7 +522,6 @@
             let lineaY = 46;
 
             if (filtroActual === 'cierres') {
-                // DISEÑO HISTORIAL DE CIERRES DIARIOS
                 doc.setFont("Helvetica", "bold");
                 doc.setFontSize(13);
                 doc.setTextColor(colorGrisOscuro);
@@ -544,14 +552,12 @@
                     lineaY += 10;
                 });
             } else {
-                // DISEÑO REPORTE DETALLADO DE VENTAS INDIVIDUALES
                 doc.setFont("Helvetica", "bold");
                 doc.setFontSize(13);
                 doc.setTextColor(colorGrisOscuro);
                 doc.text(`REPORTE DETALLADO DE VENTAS - PERÍODO: ${filtroActual.toUpperCase()}`, 14, lineaY);
                 lineaY += 7;
 
-                // Bloque resumen estadístico superior
                 doc.setFontSize(11);
                 doc.text(`Pedidos Encontrados: ${listadoFiltradoMemoria.length}   |   Total Pollos: ${document.getElementById('resumen-pollos').innerText}   |   Total Recaudado: ${document.getElementById('resumen-dinero').innerText}`, 14, lineaY);
                 lineaY += 12;
@@ -559,32 +565,27 @@
                 listadoFiltradoMemoria.forEach(p => {
                     if (lineaY > 245) { doc.addPage(); lineaY = 20; }
 
-                    // ID y Fecha en color rojo
                     doc.setFont("Helvetica", "bold");
                     doc.setFontSize(11);
                     doc.setTextColor(colorRojo);
                     doc.text(`PEDIDO N° ${p.id}  (${p.fecha} - ${p.hora})`, 14, lineaY);
                     lineaY += 6;
 
-                    // Metadatos
                     doc.setFont("Helvetica", "normal");
                     doc.setFontSize(10);
                     doc.setTextColor(colorGrisOscuro);
                     doc.text(`Servicio: ${p.servicio}  |  Estado: ${p.despachado ? 'Despachado' : 'Pendiente'}`, 16, lineaY);
                     lineaY += 5;
 
-                    // Desglose de cada ítem comprado
                     p.detalles.forEach(i => {
                         doc.text(`• ${i.cant}x  Pollo(${i.nombre.toUpperCase()}) + Papas (${i.arroz} c/ Arroz) -> ${i.subtotal} Bs.`, 18, lineaY);
                         lineaY += 5;
                     });
 
-                    // Total por pedido
                     doc.setFont("Helvetica", "bold");
                     doc.text(`Total Importe: ${p.total} Bs.`, 16, lineaY);
                     lineaY += 6;
 
-                    // Separador gris fino
                     doc.setDrawColor(224, 224, 224);
                     doc.setLineWidth(0.3);
                     doc.line(14, lineaY, 196, lineaY);
