@@ -475,11 +475,13 @@
                 return;
             }
 
-            for(let p of deHoy) {
-                await miSupabaseClient.from('ventas_pollo').delete().eq('id', p.id);
-            }
+            /* SE REMUEVE EL BUCLE DE BORRADO DE ABAJO:
+               for(let p of deHoy) {
+                   await miSupabaseClient.from('ventas_pollo').delete().eq('id', p.id);
+               }
+            */
 
-            alert("🔒 Cierre Diario subido a la nube con éxito y tabla de ventas limpiada.");
+            alert("🔒 Cierre Diario subido a la nube con éxito. Los pedidos individuales se han conservado en el historial.");
             await sincronizarConNube();
         }
 
