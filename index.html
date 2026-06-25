@@ -341,14 +341,19 @@
             const c1 = parseInt(document.getElementById('cant1').value);
             const c2 = parseInt(document.getElementById('cant2').value);
             const c3 = parseInt(document.getElementById('cant3').value);
-            
+    
             let ahora = new Date();
             let itemsPedidos = [];
             if(c1 > 0) itemsPedidos.push({ nombre: "Pierna", cant: c1, arroz: parseInt(document.getElementById('arroz1').value), subtotal: c1*14 });
             if(c2 > 0) itemsPedidos.push({ nombre: "Ala", cant: c2, arroz: parseInt(document.getElementById('arroz2').value), subtotal: c2*18 });
             if(c3 > 0) itemsPedidos.push({ nombre: "Pecho", cant: c3, arroz: parseInt(document.getElementById('arroz3').value), subtotal: c3*18 });
 
-            // Enviamos los datos usando la variable corregida
+            // 1. Obtener los datos del usuario que tiene la sesión activa en el navegador
+            const { data: { user } } = await miSupabaseClient.auth.getUser();
+            // Si por alguna razón no encuentra el usuario, guardará "Anonimo"
+            const usuarioEmail = user ? user.email : "Anonimo"; 
+
+            // 2. Insertar la venta incluyendo la nueva columna 'usuario'
             const { error } = await miSupabaseClient.from('ventas_pollo').insert([{
                 fecha_obj: ahora.getTime(),
                 fecha: ahora.toLocaleDateString(),
@@ -357,7 +362,8 @@
                 detalles: itemsPedidos,
                 total: totalPedido,
                 total_pollos: (c1+c2+c3),
-                despachado: false
+                despachado: false,
+                usuario: usuarioEmail // <-- Enviamos el correo de quien registra la venta
             }]);
 
             if(!error) {
