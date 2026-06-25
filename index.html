@@ -463,6 +463,7 @@
             let totalDinero = deHoy.reduce((acc, p) => acc + p.total, 0);
             let totalPollos = deHoy.reduce((acc, p) => acc + p.total_pollos, 0);
 
+            // 1. Guardamos el resumen en cierres_diarios (la tabla ventas_pollo permanece intacta)
             const { error: errorInsert } = await miSupabaseClient.from('cierres_diarios').insert([{
                 fecha_cierre: hoy,
                 total_pedidos: deHoy.length,
@@ -475,14 +476,17 @@
                 return;
             }
 
-            /* SE REMUEVE EL BUCLE DE BORRADO DE ABAJO:
-               for(let p of deHoy) {
-                   await miSupabaseClient.from('ventas_pollo').delete().eq('id', p.id);
-               }
-            */
+            alert("🔒 Cierre Diario guardado en la nube.");
 
-            alert("🔒 Cierre Diario subido a la nube con éxito. Los pedidos individuales se han conservado en el historial.");
+            // 2. CORRECCIÓN CRÍTICA: En lugar de borrar las variables, recargamos los datos de Supabase
+            // Esto hace que 'Semana' y 'Mes' sigan teniendo datos, pero 'Hoy' se recalcule limpiamente.
             await sincronizarConNube();
+
+            // 3. Dejamos la pantalla parada en la pestaña 'hoy' ya limpia para el nuevo turno
+            filtrarPeriodo('hoy');
+    
+            // 4. Regresa el formulario de ventas a su estado base
+            cancelarPedido();
         }
 
         function renderizarHistorialCierres() {
